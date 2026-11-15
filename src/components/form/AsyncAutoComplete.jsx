@@ -42,7 +42,7 @@ function buildSearchParams({ search, queryParam, queryParams, useFilterParam, se
  * Ô chọn có tìm kiếm, tự tải danh sách lựa chọn từ API (hoặc từ hàm fetchOptions / mảng options cố định).
  *
  * Nguồn dữ liệu (chọn một):
- * - url: GET `${url}?q=...&page=1&limit=20` (POST nếu method="POST" hoặc có body). Response là mảng, `{ data: [] }` hoặc `{ items: [] }`.
+ * - url: đường dẫn đầy đủ khai báo trong constants/urlConfig.js. GET `${url}?q=...&page=1&limit=20` (POST nếu method="POST" hoặc có body). Response là mảng, `{ data: [] }` hoặc `{ items: [] }`.
  * - fetchOptions({ search, page, limit }): hàm tự lấy dữ liệu (dữ liệu mẫu, API đặc thù...).
  * - options: mảng cố định, lọc tại client theo nhãn.
  *
@@ -58,7 +58,7 @@ function buildSearchParams({ search, queryParam, queryParams, useFilterParam, se
  * - allowOtherOption: thêm lựa chọn "--Khác--" cuối danh sách.
  * - onDeleteOption + urlDelete(option) (+ deleteCondition): nút xóa từng lựa chọn trong danh sách.
  *
- * <AsyncAutoComplete label="Người thụ hưởng" url="beneficiaries" optionLabel="name" value={value} onChange={setValue} />
+ * <AsyncAutoComplete label="Người thụ hưởng" url={API_BENEFICIARIES} optionLabel="name" value={value} onChange={setValue} />
  */
 export default function AsyncAutoComplete({
   url,

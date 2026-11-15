@@ -1,23 +1,23 @@
 import axios from 'axios'
+import { API_LOGIN, API_LOGOUT, API_REFRESH } from '../constants/urlConfig'
 
 /**
  * Client gọi API backend (server/ NestJS).
- * Địa chỉ lấy từ VITE_API_URL (ví dụ http://localhost:3000/api), mặc định "/api" cùng domain.
- * Interceptor trả thẳng body của response, nên `await axiosInstance.get(url)` nhận dữ liệu luôn.
+ * Đường dẫn đầy đủ khai báo trong constants/urlConfig.js (APP_BASE lấy từ VITE_APP_BASE_URL),
+ * nên ở đây không đặt baseURL. Interceptor trả thẳng body của response.
  *
  * Xác thực bằng cookie httpOnly (accessToken, refreshToken) do server đặt, JS không đọc được token.
  * Gặp 401 -> tự gọi POST /refresh một lần rồi gửi lại request; refresh cũng hỏng -> báo hết phiên.
  */
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '/api',
   timeout: 15000,
-  // Gửi kèm cookie cả khi API khác domain (VITE_API_URL)
+  // Gửi kèm cookie cả khi API khác domain (VITE_APP_BASE_URL)
   withCredentials: true,
 })
 
 // Các API xác thực: không tự refresh khi lỗi, tránh vòng lặp vô hạn
-const AUTH_PATHS = ['/login', '/refresh', '/logout']
-const isAuthRequest = (config) => AUTH_PATHS.some((path) => config?.url?.endsWith(path))
+const AUTH_URLS = [API_LOGIN, API_REFRESH, API_LOGOUT]
+const isAuthRequest = (config) => AUTH_URLS.includes(config?.url)
 
 // Nhiều request cùng gặp 401 thì chỉ gọi /refresh một lần, các request khác chờ chung
 let refreshPromise = null
@@ -38,7 +38,7 @@ axiosInstance.interceptors.response.use(
 
     config._retried = true
     try {
-      refreshPromise ??= axiosInstance.post('/refresh').finally(() => {
+      refreshPromise ??= axiosInstance.post(API_REFRESH).finally(() => {
         refreshPromise = null
       })
       await refreshPromise

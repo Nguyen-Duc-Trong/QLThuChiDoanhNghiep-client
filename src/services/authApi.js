@@ -1,4 +1,5 @@
 import axiosInstance from '../utils/axiosInstance'
+import { API_LOGIN, API_LOGOUT, API_ME, API_REFRESH } from '../constants/urlConfig'
 
 /**
  * Gọi API xác thực (server/src/auth). Token nằm trong cookie httpOnly, không trả trong body.
@@ -6,13 +7,13 @@ import axiosInstance from '../utils/axiosInstance'
  */
 const authApi = {
   /** POST /login — { email, password }, data: SessionProfile */
-  login: (body) => axiosInstance.post('/login', body),
+  login: (body) => axiosInstance.post(API_LOGIN, body),
   /** GET /me — data: SessionProfile của người đang đăng nhập */
-  me: () => axiosInstance.get('/me'),
+  me: () => axiosInstance.get(API_ME),
   /** POST /refresh — cấp lại cookie accessToken từ cookie refreshToken */
-  refresh: () => axiosInstance.post('/refresh'),
+  refresh: () => axiosInstance.post(API_REFRESH),
   /** POST /logout — thu hồi refresh token và xóa cookie */
-  logout: () => axiosInstance.post('/logout'),
+  logout: () => axiosInstance.post(API_LOGOUT),
 }
 
 export default authApi

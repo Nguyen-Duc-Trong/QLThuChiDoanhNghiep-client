@@ -175,19 +175,3 @@ export const CATEGORY_MODULES = [
   { value: 'THU', label: 'Thu', prefix: 'THU' },
   { value: 'CHI', label: 'Chi', prefix: 'CHI' },
 ]
-
-// updatedAt dạng ISO để sắp xếp; usage = số giao dịch đang dùng danh mục (> 0 thì không được xóa).
-export const CATEGORY_LIST = [
-  { id: 'THU-001', code: 'THU-001', name: 'Doanh thu bán hàng', module: 'THU', status: 'DANG_SU_DUNG', usage: 128, description: 'Doanh thu từ bán sản phẩm và hàng hóa.', updatedAt: '2026-10-22', updatedBy: 'Lê Thu Hà' },
-  { id: 'THU-002', code: 'THU-002', name: 'Doanh thu dịch vụ', module: 'THU', status: 'DANG_SU_DUNG', usage: 46, description: 'Doanh thu từ dịch vụ tư vấn và triển khai.', updatedAt: '2026-10-22', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-001', code: 'CHI-001', name: 'Marketing', module: 'CHI', status: 'DANG_SU_DUNG', usage: 32, description: 'Chi phí quảng cáo, truyền thông và các chiến dịch thương hiệu.', updatedAt: '2026-10-21', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-002', code: 'CHI-002', name: 'Nhân sự', module: 'CHI', status: 'DANG_SU_DUNG', usage: 84, description: 'Tuyển dụng, phúc lợi và hoạt động nhân sự.', updatedAt: '2026-10-20', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-003', code: 'CHI-003', name: 'Vận hành', module: 'CHI', status: 'DANG_SU_DUNG', usage: 57, description: 'Chi phí văn phòng, tiện ích và vận hành hằng ngày.', updatedAt: '2026-10-20', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-004', code: 'CHI-004', name: 'Công tác', module: 'CHI', status: 'DANG_SU_DUNG', usage: 12, description: 'Đi lại, lưu trú và phụ cấp công tác.', updatedAt: '2026-10-19', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-007', code: 'CHI-007', name: 'Đào tạo nội bộ', module: 'CHI', status: 'DANG_SU_DUNG', usage: 0, description: 'Khóa học, hội thảo và tài liệu đào tạo cho nhân viên.', updatedAt: '2026-10-18', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-008', code: 'CHI-008', name: 'Sự kiện', module: 'CHI', status: 'NGUNG_SU_DUNG', usage: 0, description: 'Tổ chức sự kiện nội bộ và sự kiện khách hàng.', updatedAt: '2026-10-17', updatedBy: 'Lê Thu Hà' },
-  { id: 'THU-003', code: 'THU-003', name: 'Hoàn tạm ứng', module: 'THU', status: 'DANG_SU_DUNG', usage: 21, description: 'Nhân viên hoàn lại khoản tạm ứng chưa sử dụng hết.', updatedAt: '2026-10-15', updatedBy: 'Lê Thu Hà' },
-  { id: 'THU-004', code: 'THU-004', name: 'Thanh lý tài sản', module: 'THU', status: 'NGUNG_SU_DUNG', usage: 3, description: 'Tiền thu từ thanh lý tài sản, thiết bị cũ.', updatedAt: '2026-10-12', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-005', code: 'CHI-005', name: 'Mua sắm thiết bị', module: 'CHI', status: 'DANG_SU_DUNG', usage: 19, description: 'Mua máy tính, thiết bị văn phòng và linh kiện.', updatedAt: '2026-10-10', updatedBy: 'Lê Thu Hà' },
-  { id: 'CHI-006', code: 'CHI-006', name: 'Dịch vụ thuê ngoài', module: 'CHI', status: 'DANG_SU_DUNG', usage: 9, description: 'Thuê dịch vụ, chuyên gia và đối tác bên ngoài.', updatedAt: '2026-10-08', updatedBy: 'Lê Thu Hà' },
-]
