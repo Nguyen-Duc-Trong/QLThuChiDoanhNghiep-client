@@ -9,19 +9,24 @@ import {
   Palette,
   ShieldCheck,
 } from 'lucide-react'
+import { PERMS, hasAnyPermission } from './permissions'
 
-// Menu sidebar theo vai trò (theo ma trận module × vai trò trong màn 24).
-const ALL_ITEMS = {
-  overview: { key: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/' },
-  income: { key: 'income', label: 'Quản lý thu', icon: ArrowDownLeft, path: '/income' },
-  expense: { key: 'expense', label: 'Yêu cầu chi', icon: ArrowUpRight, path: '/expenses' },
-  approval: { key: 'approval', label: 'Phê duyệt', icon: CircleCheck, path: '/approvals' },
-  payment: { key: 'payment', label: 'Thanh toán', icon: Landmark, path: '/payments' },
-  budget: { key: 'budget', label: 'Ngân sách', icon: ChartNoAxesCombined, path: '/budgets' },
-  activity: { key: 'activity', label: 'Nhật ký & thông báo', icon: Bell, path: '/activity' },
-  admin: { key: 'admin', label: 'Quản trị hệ thống', icon: ShieldCheck, path: '/admin' },
-  gallery: { key: 'gallery', label: 'Thư viện UI', icon: Palette, path: '/ui' },
-}
+export { hasAnyPermission }
+
+// Menu sidebar: mỗi mục cần quyền `<module>.menu` (Admin bật/tắt theo vai trò hoặc riêng từng người).
+// Cùng quyền đó dùng để chặn route trong router.jsx (handle.permissions).
+const ALL_ITEMS = [
+  { key: 'overview', label: 'Tổng quan', icon: LayoutDashboard, path: '/', permissions: [PERMS.DASHBOARD_MENU] },
+  { key: 'income', label: 'Quản lý thu', icon: ArrowDownLeft, path: '/income', permissions: [PERMS.INCOME_MENU] },
+  { key: 'expense', label: 'Yêu cầu chi', icon: ArrowUpRight, path: '/expenses', permissions: [PERMS.EXPENSE_MENU] },
+  { key: 'approval', label: 'Phê duyệt', icon: CircleCheck, path: '/approvals', permissions: [PERMS.APPROVAL_MENU] },
+  { key: 'payment', label: 'Thanh toán', icon: Landmark, path: '/payments', permissions: [PERMS.PAYMENT_MENU] },
+  { key: 'budget', label: 'Ngân sách', icon: ChartNoAxesCombined, path: '/budgets', permissions: [PERMS.BUDGET_MENU] },
+  { key: 'activity', label: 'Nhật ký & thông báo', icon: Bell, path: '/activity', permissions: [PERMS.ACTIVITY_MENU] },
+  { key: 'admin', label: 'Quản trị hệ thống', icon: ShieldCheck, path: '/admin', permissions: [PERMS.ADMIN_MENU] },
+]
+
+const GALLERY_ITEM = { key: 'gallery', label: 'Thư viện UI', icon: Palette, path: '/ui' }
 
 export const ROLES = {
   NHAN_VIEN: { label: 'Nhân viên', scope: { title: 'Dữ liệu của bạn', description: 'Quyền được cấp bởi quản trị viên. Mọi thao tác đều có nhật ký.' } },
@@ -31,17 +36,10 @@ export const ROLES = {
   ADMIN: { label: 'Quản trị viên', scope: { title: 'Quản trị viên hệ thống', description: 'Quyền được cấp bởi quản trị viên. Mọi thao tác đều có nhật ký.' } },
 }
 
-export const NAV_BY_ROLE = {
-  NHAN_VIEN: ['overview', 'income', 'expense', 'budget', 'activity'],
-  TRUONG_PHONG: ['overview', 'income', 'expense', 'approval', 'budget', 'activity'],
-  KE_TOAN: ['overview', 'income', 'expense', 'approval', 'payment', 'budget', 'activity'],
-  LANH_DAO: ['overview', 'income', 'expense', 'approval', 'budget', 'activity'],
-  ADMIN: ['overview', 'income', 'expense', 'approval', 'payment', 'budget', 'activity', 'admin'],
-}
-
-export function getNavItems(role, { includeGallery = false } = {}) {
-  const keys = [...(NAV_BY_ROLE[role] ?? NAV_BY_ROLE.NHAN_VIEN), ...(includeGallery ? ['gallery'] : [])]
-  return keys.map((key) => ALL_ITEMS[key])
+/** Các mục menu mà người có danh sách quyền `permissions` được thấy */
+export function getNavItems(permissions, { includeGallery = false } = {}) {
+  const items = ALL_ITEMS.filter((item) => hasAnyPermission(permissions, item.permissions))
+  return includeGallery ? [...items, GALLERY_ITEM] : items
 }
 
 // Mục menu đang active = mục có path dài nhất khớp với đầu URL hiện tại.

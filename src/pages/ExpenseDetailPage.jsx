@@ -22,6 +22,8 @@ import {
 } from '../components'
 import { MARKETING_BUDGET, findExpense } from '../mocks/data'
 import { formatDate, formatDateTime, formatMoney } from '../utils/format'
+import usePermission from '../hooks/usePermission'
+import { PERMS } from '../constants/permissions'
 
 // Màn 10 · Chi tiết hồ sơ chi (góc nhìn người tạo).
 const DEFAULT_STEPS = [
@@ -61,6 +63,7 @@ export default function ExpenseDetailPage() {
   const showToast = useToast()
   const { id } = useParams()
   const navigate = useNavigate()
+  const canEdit = usePermission(PERMS.EXPENSE_EDIT)
   const [tab, setTab] = useState('profile')
   const expense = findExpense(id)
 
@@ -87,7 +90,7 @@ export default function ExpenseDetailPage() {
         description={`Phiên bản v${expense.version ?? 1} · Gửi lúc ${formatDateTime(expense.createdAt)}${expense.project ? ` · Dự án ${expense.project}` : ''}`}
         actions={
           <>
-            {expense.status === 'CAN_BO_SUNG' && (
+            {expense.status === 'CAN_BO_SUNG' && canEdit && (
               <Button variant="contained" onClick={() => navigate(`/expenses/${expense.id}/resubmit`)}>Bổ sung hồ sơ</Button>
             )}
             <Button variant="outlined" startIcon={<Download size={16} />} onClick={() => showToast('Đang chuẩn bị tệp hồ sơ...', 'info')}>

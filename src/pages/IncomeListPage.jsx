@@ -22,6 +22,8 @@ import {
 } from '../components'
 import { INCOMES } from '../mocks/income'
 import { formatDate, formatMoney } from '../utils/format'
+import Can from '../components/common/Can'
+import { PERMS } from '../constants/permissions'
 
 // Màn 05 · Quản lý khoản thu (kế toán).
 const PAGE_SIZE = 6
@@ -113,9 +115,11 @@ export default function IncomeListPage() {
             <Button variant="outlined" startIcon={<Download size={16} />} onClick={() => showToast('Đang xuất danh sách khoản thu...', 'info')}>
               Xuất danh sách
             </Button>
-            <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => navigate('/income/new')}>
-              Tạo khoản thu
-            </Button>
+            <Can permission={PERMS.INCOME_CREATE}>
+              <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => navigate('/income/new')}>
+                Tạo khoản thu
+              </Button>
+            </Can>
           </>
         }
       />

@@ -7,9 +7,9 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import { LogOut } from 'lucide-react'
 import { AppShell, EmptyState } from '../components'
-import { ROLES, findActiveNavKey, getNavItems } from '../constants/navigation'
+import { ROLES, findActiveNavKey, getNavItems, hasAnyPermission } from '../constants/navigation'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchMe, logout, selectCurrentUser, selectSessionStatus } from '../store/slices/sessionSlice'
+import { fetchMe, logout, refreshSession, selectCurrentUser, selectSessionStatus } from '../store/slices/sessionSlice'
 import { formatDate } from '../utils/format'
 
 const TODAY_LABEL = formatDate(new Date())
@@ -37,7 +37,7 @@ export default function RootLayout() {
 }
 
 /**
- * Khung chung cho mọi route: sidebar theo vai trò, breadcrumb lấy từ `handle.crumb`
+ * Khung chung cho mọi route: sidebar theo quyền, breadcrumb lấy từ `handle.crumb`
  * của các route đang khớp, menu tài khoản để đăng xuất.
  */
 function AppLayout() {
@@ -49,7 +49,14 @@ function AppLayout() {
   const role = user.roleCode
   const [userMenuEl, setUserMenuEl] = useState(null)
 
-  const navItems = getNavItems(role, { includeGallery: import.meta.env.DEV })
+  // Quay lại tab thì tải lại quyền: Admin có thể vừa đổi quyền vai trò / quyền riêng của người này.
+  useEffect(() => {
+    const onFocus = () => dispatch(refreshSession())
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [dispatch])
+
+  const navItems = getNavItems(user.permissions, { includeGallery: import.meta.env.DEV })
   const activeKey = findActiveNavKey(navItems, pathname)
 
   const crumbs = matches
@@ -60,10 +67,14 @@ function AppLayout() {
     }))
   const breadcrumbs = [{ label: 'An Việt', path: '/' }, ...crumbs].map((c) => ({ label: c.label, onClick: () => navigate(c.path) }))
 
-  // Route khai báo `handle.roles` thì chỉ các vai trò đó được xem (ví dụ /admin chỉ ADMIN).
-  // Đây chỉ là ẩn giao diện; server vẫn tự kiểm tra quyền ở từng API.
-  const allowedRoles = matches.findLast((m) => m.handle?.roles)?.handle.roles
-  const forbidden = allowedRoles && !allowedRoles.includes(role)
+  // Mỗi route khai báo `handle.permissions` thì phải có ít nhất một quyền trong đó; route lồng nhau phải qua đủ mọi cấp
+  // (vd. /budgets/allocation cần cả budget.menu lẫn budget.allocate). Đây chỉ là ẩn giao diện; server vẫn tự kiểm tra quyền ở từng API.
+  const forbidden = matches.some((m) => !hasAnyPermission(user.permissions, m.handle?.permissions))
+
+  // Vai trò bị tắt menu Tổng quan: vào "/" thì chuyển sang menu đầu tiên còn được thấy.
+  if (forbidden && pathname === '/' && navItems.length > 0 && navItems[0].path !== '/') {
+    return <Navigate to={navItems[0].path} replace />
+  }
 
   const signOut = () => {
     setUserMenuEl(null)

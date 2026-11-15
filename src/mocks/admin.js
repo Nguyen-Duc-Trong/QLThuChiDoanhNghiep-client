@@ -1,33 +1,6 @@
 // Quản trị hệ thống (màn 21, 22) và nhật ký – thông báo (màn 23).
 
-export const PERMISSION_ACTIONS = [
-  { key: 'view', label: 'Xem' },
-  { key: 'create', label: 'Tạo' },
-  { key: 'edit', label: 'Sửa' },
-  { key: 'submit', label: 'Gửi' },
-  { key: 'deptApprove', label: 'Duyệt phòng' },
-  { key: 'accApprove', label: 'Duyệt kế toán' },
-  { key: 'finalApprove', label: 'Duyệt cuối' },
-  { key: 'pay', label: 'Thực chi' },
-  { key: 'confirmIncome', label: 'Xác nhận thu' },
-  { key: 'budget', label: 'Ngân sách' },
-  { key: 'users', label: 'Người dùng' },
-  { key: 'config', label: 'Cấu hình' },
-  { key: 'audit', label: 'Nhật ký' },
-]
-
-// Quyền nhạy cảm: Admin hệ thống không được cấp (chỉ quản trị cấu hình).
-export const SENSITIVE_ACTIONS = ['deptApprove', 'accApprove', 'finalApprove', 'pay', 'confirmIncome', 'budget']
-
-const allow = (...keys) => Object.fromEntries(keys.map((k) => [k, true]))
-
-export const ROLE_DEFINITIONS = [
-  { key: 'KE_TOAN', name: 'Kế toán', scope: 'Toàn công ty', permissions: allow('view', 'create', 'edit', 'accApprove', 'pay', 'confirmIncome', 'budget') },
-  { key: 'NHAN_VIEN', name: 'Nhân viên', scope: 'Cá nhân', permissions: allow('view', 'create', 'submit') },
-  { key: 'TRUONG_PHONG', name: 'Trưởng phòng', scope: 'Phòng ban', permissions: allow('view', 'create', 'edit', 'submit', 'deptApprove') },
-  { key: 'LANH_DAO', name: 'Lãnh đạo', scope: 'Toàn công ty', permissions: allow('view', 'finalApprove', 'budget') },
-  { key: 'ADMIN', name: 'Admin', scope: 'Cấu hình hệ thống', permissions: allow('view', 'create', 'edit', 'users', 'config', 'audit') },
-]
+// Danh mục quyền và ma trận vai trò lấy từ server: GET /permissions/catalog, GET /roles.
 
 export const ROLE_SCOPES = ['Cá nhân', 'Phòng ban', 'Toàn công ty', 'Cấu hình hệ thống']
 

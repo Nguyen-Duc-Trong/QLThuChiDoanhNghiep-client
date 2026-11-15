@@ -20,6 +20,8 @@ import { EXPENSE_COLUMNS } from '../constants/expenseColumns'
 import { STATUS } from '../constants/status'
 import { EXPENSES } from '../mocks/data'
 import { formatDateTime, formatMoney } from '../utils/format'
+import Can from '../components/common/Can'
+import { PERMS } from '../constants/permissions'
 
 // Màn 08 · Yêu cầu chi của tôi.
 const PAGE_SIZE = 5
@@ -65,9 +67,11 @@ export default function ExpenseListPage() {
         title="Yêu cầu chi của tôi"
         description="Theo dõi từng hồ sơ chi đã tạo, bước duyệt hiện tại và tình trạng thanh toán."
         actions={
-          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate('/expenses/new')}>
-            Tạo yêu cầu chi
-          </Button>
+          <Can permission={PERMS.EXPENSE_CREATE}>
+            <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate('/expenses/new')}>
+              Tạo yêu cầu chi
+            </Button>
+          </Can>
         }
         tags={<StatusBadge label="Phạm vi cá nhân" tone="primary" />}
       />

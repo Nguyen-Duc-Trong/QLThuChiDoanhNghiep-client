@@ -1,9 +1,9 @@
 import { useNavigate, useParams } from 'react-router'
 import Button from '@mui/material/Button'
-import { useSelector } from 'react-redux'
 import { EmptyState } from '../../components'
 import { ACCOUNTING_QUEUE, CHI_1024, FINAL_QUEUE } from '../../mocks/approvals'
-import { selectRole } from '../../store/slices/sessionSlice'
+import usePermission from '../../hooks/usePermission'
+import { PERMS } from '../../constants/permissions'
 import AccountingReviewPage from './AccountingReviewPage'
 import ApprovalQueuePage from './ApprovalQueuePage'
 import DepartmentApprovalPage from './DepartmentApprovalPage'
@@ -18,19 +18,30 @@ function findRequest(queue, id) {
 }
 
 /**
- * Trang /approvals và /approvals/:id hiển thị theo vai trò:
- * - Trưởng phòng: màn 11 (hàng chờ + hồ sơ trên cùng một màn).
- * - Kế toán: hàng chờ thẩm định → màn 12.
- * - Lãnh đạo / Admin: hàng chờ duyệt cuối → màn 13.
+ * Trang /approvals và /approvals/:id hiển thị theo quyền duyệt (ưu tiên cấp thấp trước):
+ * - approval.dept: màn 11 (hàng chờ + hồ sơ trên cùng một màn).
+ * - approval.accounting: hàng chờ thẩm định → màn 12.
+ * - approval.final: hàng chờ duyệt cuối → màn 13.
  */
 export default function ApprovalsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const role = useSelector(selectRole)
+  const canDept = usePermission(PERMS.APPROVAL_DEPT)
+  const canAccounting = usePermission(PERMS.APPROVAL_ACCOUNTING)
+  const canFinal = usePermission(PERMS.APPROVAL_FINAL)
 
-  if (role === 'TRUONG_PHONG') return <DepartmentApprovalPage />
+  if (canDept) return <DepartmentApprovalPage />
+  if (!canAccounting && !canFinal) {
+    return (
+      <EmptyState
+        variant="no-permission"
+        title="Bạn chưa được giao quyền duyệt"
+        description="Bạn thấy menu Phê duyệt nhưng chưa có quyền duyệt cấp nào. Liên hệ quản trị viên nếu cần."
+      />
+    )
+  }
 
-  const isAccounting = role === 'KE_TOAN'
+  const isAccounting = canAccounting
   const queue = isAccounting ? ACCOUNTING_QUEUE : FINAL_QUEUE
 
   if (!id) {

@@ -15,6 +15,13 @@ export const fetchMe = createAsyncThunk('session/fetchMe', withApiError(async ()
   // StrictMode chạy effect 2 lần: đang gọi rồi thì bỏ qua lần sau
   condition: (_, { getState }) => getState().session.status !== 'loading',
 })
+/**
+ * Tải lại quyền/thông tin phiên ở chế độ im lặng (không chuyển status sang loading, không đá về /login khi lỗi).
+ * Gọi sau khi Admin sửa quyền vai trò của chính mình, hoặc khi người dùng quay lại tab (quyền có thể đã đổi).
+ */
+export const refreshSession = createAsyncThunk('session/refresh', withApiError(async () => (await authApi.me()).data), {
+  condition: (_, { getState }) => getState().session.status === 'authenticated',
+})
 // Đăng xuất luôn thành công phía client, kể cả khi server báo lỗi (phiên đã hết hạn sẵn)
 export const logout = createAsyncThunk('session/logout', async () => {
   try {
@@ -51,6 +58,9 @@ const sessionSlice = createSlice({
         state.status = 'authenticated'
       })
       .addCase(logout.fulfilled, signedOut)
+      .addCase(refreshSession.fulfilled, (state, action) => {
+        if (state.status === 'authenticated') state.user = action.payload
+      })
   },
 })
 

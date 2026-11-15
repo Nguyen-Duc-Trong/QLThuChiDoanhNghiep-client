@@ -13,6 +13,7 @@ import {
   CustomForm,
   CustomInput,
   CustomSelect,
+  CustomTab,
   EmptyState,
   FilterSelect,
   FormDrawer,
@@ -23,12 +24,21 @@ import {
   SectionCard,
   StatusBadge,
   TOAST_OPTIONS,
+  usePermission,
   useToast,
 } from '../../components'
-import { PERMISSION_ACTIONS, ROLE_SCOPES, SENSITIVE_ACTIONS, SPEND_FLOW } from '../../mocks/admin'
+import { ROLE_SCOPES, SPEND_FLOW } from '../../mocks/admin'
+import { PERMS } from '../../constants/permissions'
 import { fetchRoles, selectRoles, selectRolesError, selectRolesLoading, updateRolePermissions } from '../../store/slices/rolesSlice'
-import { selectHasPermission } from '../../store/slices/sessionSlice'
+import {
+  fetchPermissionCatalog,
+  selectPermissionCatalog,
+  selectPermissionCatalogError,
+  selectPermissionCatalogLoading,
+} from '../../store/slices/permissionsSlice'
+import { refreshSession, selectCurrentUser } from '../../store/slices/sessionSlice'
 import { colors, radius } from '../../theme/tokens'
+import { adminLockReason, indexCatalog } from '../../utils/permissionCatalog'
 import validationResolver from '../../utils/validationResolver'
 import AdminTabs from './AdminTabs'
 
@@ -38,6 +48,9 @@ const PERMISSION_FILTER = [
   { value: '', label: 'Tất cả quyền' },
   { value: 'sensitive', label: 'Quyền nhạy cảm' },
 ]
+
+// Cột đặc biệt "Cả module": bấm để cấp / bỏ toàn bộ quyền của module đang xem cho một vai trò
+const ALL_KEY = '__all'
 
 const EMPTY_CUSTOMIZATION = { readOnly: false, locked: false, lockReason: '' }
 
@@ -61,7 +74,11 @@ export default function RolesPage() {
   const serverRoles = useSelector(selectRoles)
   const rolesLoading = useSelector(selectRolesLoading)
   const rolesError = useSelector(selectRolesError)
-  const canEdit = useSelector((state) => selectHasPermission(state, 'config'))
+  const catalog = useSelector(selectPermissionCatalog)
+  const catalogLoading = useSelector(selectPermissionCatalogLoading)
+  const catalogError = useSelector(selectPermissionCatalogError)
+  const currentUser = useSelector(selectCurrentUser)
+  const canEdit = usePermission(PERMS.ADMIN_ROLES)
   // Vai trò tự tạo (CUSTOM_*) chưa có API, chỉ lưu tạm trên trình duyệt
   const [customRoles, setCustomRoles] = useState([])
   const roles = useMemo(
@@ -72,9 +89,11 @@ export default function RolesPage() {
 
   useEffect(() => {
     dispatch(fetchRoles())
+    dispatch(fetchPermissionCatalog())
   }, [dispatch])
   const [scope, setScope] = useState('')
   const [permissionFilter, setPermissionFilter] = useState('')
+  const [moduleTab, setModuleTab] = useState(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   // Tùy chỉnh đã lưu theo vai trò: { [roleKey]: { readOnly, locked, lockReason } }
   const [customizations, setCustomizations] = useState({ KE_TOAN: { readOnly: true, locked: false, lockReason: 'Chờ rà soát ngân sách quý IV trước khi mở lại quyền gửi yêu cầu.' } })
@@ -84,8 +103,25 @@ export default function RolesPage() {
   const locked = useWatch({ control: customizeForm.control, name: 'locked' })
   const roleForm = useForm({ defaultValues: { name: '', scope: ROLE_SCOPES[0] }, resolver: validationResolver(validateNewRole), context: { roles } })
 
-  const actions = permissionFilter === 'sensitive' ? PERMISSION_ACTIONS.filter((a) => SENSITIVE_ACTIONS.includes(a.key)) : PERMISSION_ACTIONS
-  const visibleRoles = roles.filter((r) => !scope || r.scope === scope)
+  // ----- Ma trận theo tab module -----
+  const actionIndex = useMemo(() => indexCatalog(catalog), [catalog])
+  const modules =
+    permissionFilter === 'sensitive'
+      ? catalog.map((m) => ({ ...m, actions: m.actions.filter((a) => a.sensitive) })).filter((m) => m.actions.length > 0)
+      : catalog
+  const activeModule = modules.find((m) => m.key === moduleTab) ?? modules[0]
+  const moduleActions = activeModule?.actions ?? []
+  // Hàng ma trận: thêm ô "Cả module" = có đủ mọi quyền của module đang xem
+  const visibleRoles = roles
+    .filter((r) => !scope || r.scope === scope)
+    .map((r) => ({
+      ...r,
+      permissions: { ...r.permissions, [ALL_KEY]: moduleActions.length > 0 && moduleActions.every((a) => r.permissions[a.key]) },
+    }))
+  const matrixActions = moduleActions.length > 1 ? [...moduleActions, { key: ALL_KEY, label: 'Cả module' }] : moduleActions
+
+  const getLockedReason = (role, actionKey) =>
+    actionKey === ALL_KEY ? null : adminLockReason(role.key, actionIndex[actionKey], Boolean(role.permissions[actionKey]))
 
   const selectRole = (key) => {
     setSelectedKey(key)
@@ -94,29 +130,37 @@ export default function RolesPage() {
 
   const togglePermission = async (roleKey, actionKey) => {
     const role = roles.find((r) => r.key === roleKey)
-    const granting = !role.permissions[actionKey]
-    if (roleKey === 'ADMIN' && granting && SENSITIVE_ACTIONS.includes(actionKey)) {
-      showToast('Admin chỉ quản trị cấu hình, không được cấp quyền duyệt, thực chi hay ngân sách', 'error')
-      return
-    }
     if (customizations[roleKey]?.locked) {
       showToast(`Vai trò ${role.name} đang bị khóa, mở khóa trước khi đổi quyền`, 'warning')
       return
     }
-    const actionLabel = PERMISSION_ACTIONS.find((a) => a.key === actionKey).label
-    const nextMap = { ...role.permissions, [actionKey]: granting }
+
+    // Một ô hoặc cả module. Với ADMIN, bỏ qua các quyền bị khóa (nhạy cảm / bắt buộc giữ).
+    const bulk = actionKey === ALL_KEY
+    const granting = bulk ? !moduleActions.every((a) => role.permissions[a.key]) : !role.permissions[actionKey]
+    const targets = (bulk ? moduleActions : [actionIndex[actionKey]]).filter(
+      (a) => !adminLockReason(roleKey, a, Boolean(role.permissions[a.key])),
+    )
+    if (targets.length === 0) return
+    const nextMap = { ...role.permissions }
+    targets.forEach((a) => {
+      nextMap[a.key] = granting
+    })
+    const label = bulk ? `toàn bộ module ${activeModule.label}` : `quyền "${activeModule.label} · ${targets[0].label}"`
 
     if (roleKey.startsWith('CUSTOM_')) {
       setCustomRoles((prev) => prev.map((r) => (r.key === roleKey ? { ...r, permissions: nextMap } : r)))
-      showToast(`${granting ? 'Cấp' : 'Bỏ'} quyền "${actionLabel}" cho ${role.name}`, 'info')
+      showToast(`${granting ? 'Cấp' : 'Bỏ'} ${label} cho ${role.name}`, 'info')
       return
     }
 
     // Vai trò hệ thống: lưu lên server (PUT /roles/:key/permissions), server kiểm tra lại quy tắc
-    const permissions = Object.keys(nextMap).filter((key) => nextMap[key])
+    const permissions = Object.keys(nextMap).filter((key) => key !== ALL_KEY && nextMap[key])
     try {
       await dispatch(updateRolePermissions({ key: roleKey, permissions })).unwrap()
-      showToast(`Đã ${granting ? 'cấp' : 'bỏ'} quyền "${actionLabel}" cho ${role.name}`, 'success')
+      showToast(`Đã ${granting ? 'cấp' : 'bỏ'} ${label} cho ${role.name}`, 'success')
+      // Sửa vai trò của chính mình: tải lại quyền để sidebar / nút đổi theo ngay
+      if (roleKey === currentUser?.roleCode) dispatch(refreshSession())
     } catch (error) {
       showToast(error?.message || 'Cập nhật quyền thất bại', 'error', TOAST_OPTIONS.fromError(error))
     }
@@ -130,11 +174,11 @@ export default function RolesPage() {
 
   const createRole = roleForm.handleSubmit(({ name, scope: roleScope }) => {
     const key = `CUSTOM_${roles.length + 1}`
-    setCustomRoles((prev) => [...prev, { key, name: name.trim(), scope: roleScope, permissions: { view: true } }])
+    setCustomRoles((prev) => [...prev, { key, name: name.trim(), scope: roleScope, permissions: { [PERMS.DASHBOARD_MENU]: true } }])
     setDrawerOpen(false)
     roleForm.reset()
     selectRole(key)
-    showToast(`Đã tạo vai trò ${name.trim()} với quyền xem mặc định`, 'success')
+    showToast(`Đã tạo vai trò ${name.trim()} với menu Tổng quan mặc định`, 'success')
   })
 
   return (
@@ -175,17 +219,41 @@ export default function RolesPage() {
           <ProcessFlow variant="cards" steps={SPEND_FLOW} />
         </SectionCard>
 
-        <SectionCard title="Ma trận phân quyền" subtitle="Quyền theo vai trò và phạm vi làm việc · Bấm vào ô để cấp / bỏ quyền">
-          {rolesError && (
+        <SectionCard
+          title="Ma trận phân quyền"
+          subtitle="Chọn module, bấm vào ô để cấp / bỏ quyền cho vai trò · Xem menu = thấy mục trên sidebar và mở được trang · Muốn khác biệt cho riêng một người: dùng nút chìa khóa ở tab Người dùng"
+        >
+          {(rolesError || catalogError) && (
             <AppAlert tone="danger" title="Không tải được ma trận phân quyền" sx={{ mb: 2 }}>
-              {rolesError.message}{' '}
-              <Button size="small" onClick={() => dispatch(fetchRoles())}>Thử lại</Button>
+              {(rolesError || catalogError).message}{' '}
+              <Button
+                size="small"
+                onClick={() => {
+                  dispatch(fetchRoles())
+                  dispatch(fetchPermissionCatalog())
+                }}
+              >
+                Thử lại
+              </Button>
             </AppAlert>
           )}
-          {rolesLoading && serverRoles.length === 0 ? (
+          {(rolesLoading && serverRoles.length === 0) || (catalogLoading && catalog.length === 0) ? (
             <EmptyState variant="loading" compact />
           ) : (
-            <PermissionMatrix actions={actions} roles={visibleRoles} onToggle={canEdit ? togglePermission : undefined} />
+            <>
+              <CustomTab
+                value={activeModule?.key ?? false}
+                onChange={setModuleTab}
+                tabs={modules.map((m) => ({ value: m.key, label: m.label }))}
+                sx={{ mb: 2 }}
+              />
+              <PermissionMatrix
+                actions={matrixActions}
+                roles={visibleRoles}
+                onToggle={canEdit ? togglePermission : undefined}
+                getLockedReason={getLockedReason}
+              />
+            </>
           )}
         </SectionCard>
 

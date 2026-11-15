@@ -29,6 +29,8 @@ import { BANK_REFERENCES, INCOMES, INCOME_DETAIL } from '../mocks/income'
 import { colors } from '../theme/tokens'
 import { formatDate, formatMoney } from '../utils/format'
 import validationResolver from '../utils/validationResolver'
+import Can from '../components/common/Can'
+import { PERMS } from '../constants/permissions'
 
 // Màn 07 · Chi tiết khoản thu, kế toán ghi nhận từng đợt thực thu.
 const TODAY = '2026-10-22'
@@ -128,14 +130,16 @@ export default function IncomeDetailPage() {
             <Button variant="outlined" startIcon={<Download size={16} />} onClick={() => showToast('Đang tải chứng từ khoản thu...', 'info')}>
               Tải chứng từ
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<Plus size={16} />}
-              disabled={remaining <= 0}
-              onClick={() => document.getElementById('receipt-form')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Ghi nhận đợt thu
-            </Button>
+            <Can permission={PERMS.INCOME_CONFIRM}>
+              <Button
+                variant="contained"
+                startIcon={<Plus size={16} />}
+                disabled={remaining <= 0}
+                onClick={() => document.getElementById('receipt-form')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Ghi nhận đợt thu
+              </Button>
+            </Can>
           </>
         }
         tags={
@@ -192,7 +196,8 @@ export default function IncomeDetailPage() {
         </Stack>
 
         <Stack spacing={3}>
-          <SectionCard title="Ghi nhận đợt thu mới" subtitle="Quyền kế toán · Chưa ghi sổ">
+          <Can permission={PERMS.INCOME_CONFIRM}>
+          <SectionCard title="Ghi nhận đợt thu mới" subtitle="Quyền xác nhận thực thu · Chưa ghi sổ">
             <CustomForm id="receipt-form" methods={methods} onSubmit={(values) => setPending(values)}>
               <Stack spacing={2}>
                 <CustomMoneyInput
@@ -225,6 +230,7 @@ export default function IncomeDetailPage() {
               </Stack>
             </CustomForm>
           </SectionCard>
+          </Can>
 
           <SectionCard title="Lịch sử xử lý">
             {history.length === 0 ? (

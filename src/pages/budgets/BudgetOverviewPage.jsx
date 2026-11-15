@@ -22,6 +22,8 @@ import SpendingBarChart from '../../components/data/SpendingBarChart'
 import { MONTHS } from '../../mocks/dashboard'
 import { BUDGET_PERIOD_OPTIONS, DEPARTMENT_BUDGETS, PLAN_VS_ACTUAL, RELATED_REQUESTS, budgetStatus } from '../../mocks/budgets'
 import { formatMoney } from '../../utils/format'
+import Can from '../../components/common/Can'
+import { PERMS } from '../../constants/permissions'
 
 // Màn 17 · Tổng quan ngân sách (kế toán, lãnh đạo xem toàn công ty).
 const DEPARTMENT_OPTIONS = [{ value: '', label: 'Tất cả phòng ban' }, ...DEPARTMENT_BUDGETS.map((b) => ({ value: b.department, label: b.department }))]
@@ -64,9 +66,11 @@ export default function BudgetOverviewPage() {
             <Button variant="outlined" startIcon={<Download size={16} />} onClick={() => showToast(`Đang xuất báo cáo ngân sách ${periodLabel}...`, 'info')}>
               Xuất báo cáo
             </Button>
-            <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => navigate('/budgets/allocation')}>
-              Mở phân bổ
-            </Button>
+            <Can permission={PERMS.BUDGET_ALLOCATE}>
+              <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => navigate('/budgets/allocation')}>
+                Mở phân bổ
+              </Button>
+            </Can>
           </>
         }
         tags={<StatusBadge label="Toàn công ty · VND" tone="primary" />}

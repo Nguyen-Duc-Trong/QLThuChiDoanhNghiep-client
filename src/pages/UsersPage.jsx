@@ -5,7 +5,7 @@ import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { Plus, Trash2 } from 'lucide-react'
+import { KeyRound, Plus, Trash2 } from 'lucide-react'
 import { FormProvider, useForm } from 'react-hook-form'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -45,6 +45,8 @@ import { selectCurrentUser } from '../store/slices/sessionSlice'
 import { ROLES } from '../constants/navigation'
 import validationResolver from '../utils/validationResolver'
 import AdminTabs from './admin/AdminTabs'
+import UserPermissionsDrawer from './admin/UserPermissionsDrawer'
+import { fetchOverridesSummary, selectOverridesSummary } from '../store/slices/permissionsSlice'
 
 // Màn 20 · Admin quản lý người dùng (gọi API /users).
 const EMPTY_USER = { id: '', username: '', email: '', password: '', status: 'active', role: 'NHAN_VIEN' }
@@ -79,6 +81,8 @@ export default function UsersPage() {
   const loading = useSelector(selectUsersLoading)
   const loadError = useSelector(selectUsersError)
   const currentUser = useSelector(selectCurrentUser)
+  const overridesSummary = useSelector(selectOverridesSummary)
+  const [permissionTarget, setPermissionTarget] = useState(null) // user đang mở drawer phân quyền riêng
 
   const [search, setSearch] = useState(query.search)
   const [selectedIds, setSelectedIds] = useState([])
@@ -100,6 +104,10 @@ export default function UsersPage() {
   useEffect(() => {
     reload()
   }, [reload])
+
+  useEffect(() => {
+    dispatch(fetchOverridesSummary())
+  }, [dispatch])
 
   // Chờ người dùng gõ xong 300ms mới gọi API tìm kiếm
   useEffect(() => {
@@ -239,6 +247,16 @@ export default function UsersPage() {
     { key: 'role', header: 'Vai trò', render: (u) => <StatusBadge label={ROLES[u.role]?.label ?? u.role} tone="primary" size="small" /> },
     { key: 'status', header: 'Trạng thái', render: (u) => <StatusBadge status={STATUS_BADGE[u.status] ?? 'KHOA'} /> },
     {
+      key: 'overrides',
+      header: 'Quyền riêng',
+      render: (u) =>
+        overridesSummary[u.id] ? (
+          <StatusBadge label={`${overridesSummary[u.id]} quyền riêng`} tone="warning" size="small" />
+        ) : (
+          <Typography variant="caption">Theo vai trò</Typography>
+        ),
+    },
+    {
       key: 'action',
       header: 'Hành động',
       align: 'right',
@@ -259,6 +277,18 @@ export default function UsersPage() {
           >
             {u.status === 'inactive' ? 'Mở khóa' : 'Khóa'}
           </Button>
+          <Tooltip title="Phân quyền riêng">
+            <IconButton
+              size="small"
+              aria-label={`Phân quyền riêng cho ${u.username}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                setPermissionTarget(u)
+              }}
+            >
+              <KeyRound size={16} />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Xóa">
             <IconButton
               size="small"
@@ -387,6 +417,15 @@ export default function UsersPage() {
           </FormProvider>
         )}
       </FormDrawer>
+
+      {permissionTarget && (
+        <UserPermissionsDrawer
+          key={permissionTarget.id}
+          user={permissionTarget}
+          currentUserId={currentUser?.id}
+          onClose={() => setPermissionTarget(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={Boolean(lockTarget)}

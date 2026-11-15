@@ -13,6 +13,8 @@ export { default as UserAvatar } from './common/UserAvatar'
 export { default as EmptyState } from './common/EmptyState'
 export { default as ArrowLink } from './common/ArrowLink'
 export { default as CustomTab } from './common/CustomTab'
+export { default as Can } from './common/Can'
+export { default as usePermission } from '../hooks/usePermission'
 
 // Form
 export { default as FormTextField } from './form/FormTextField'

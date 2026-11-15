@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { useSelector } from 'react-redux'
 import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -22,8 +21,9 @@ import {
   useToast,
 } from '../../components'
 import { TRANSACTIONS } from '../../mocks/approvals'
-import { selectRole } from '../../store/slices/sessionSlice'
 import { formatMoney } from '../../utils/format'
+import usePermission from '../../hooks/usePermission'
+import { PERMS } from '../../constants/permissions'
 
 // Màn 16 · Giao dịch và đối soát thanh toán. Kế toán thao tác; lãnh đạo chỉ xem.
 const PAGE_SIZE = 9
@@ -42,7 +42,7 @@ const STATUS_OPTIONS = [
 export default function TransactionsPage() {
   const navigate = useNavigate()
   const showToast = useToast()
-  const canOperate = ['KE_TOAN', 'ADMIN'].includes(useSelector(selectRole))
+  const canOperate = usePermission(PERMS.PAYMENT_EXECUTE)
   const [transactions, setTransactions] = useState(TRANSACTIONS)
   const [search, setSearch] = useState('')
   const [period, setPeriod] = useState('2026-10')
