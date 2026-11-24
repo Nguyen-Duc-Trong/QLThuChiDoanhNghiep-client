@@ -12,7 +12,7 @@ export const STATUS = {
   DA_DUYET: { label: 'Đã duyệt', tone: 'success' },
   CHO_CHI: { label: 'Chờ chi', tone: 'info' },
   CHI_MOT_PHAN: { label: 'Chi một phần', tone: 'warning' },
-  DA_THANH_TOAN: { label: 'Đã thanh toán', tone: 'success' },
+  DA_THANH_TOAN: { label: 'Hoàn thành', tone: 'success' },
   TU_CHOI: { label: 'Từ chối', tone: 'danger' },
   HUY: { label: 'Hủy', tone: 'neutral' },
   THAT_BAI: { label: 'Thất bại', tone: 'danger' },
@@ -48,6 +48,11 @@ export const STATUS = {
   CHO_DUYET: { label: 'Chờ duyệt', tone: 'warning' },
   HOAN_THIEN: { label: 'Hoàn thiện', tone: 'success' },
   THIEU_NGUOI_DUYET: { label: 'Thiếu người duyệt', tone: 'warning' },
+
+  // Ủy quyền phê duyệt (HIEU_LUC dùng chung ở trên)
+  SAP_HIEU_LUC: { label: 'Sắp hiệu lực', tone: 'info' },
+  HET_HAN: { label: 'Hết hạn', tone: 'neutral' },
+  DA_THU_HOI: { label: 'Đã thu hồi', tone: 'neutral' },
 
   // Danh mục
   DANG_SU_DUNG: { label: 'Đang sử dụng', tone: 'success' },

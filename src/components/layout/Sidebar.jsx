@@ -7,7 +7,7 @@ import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
 import Link from '@mui/material/Link'
 import { Building2, ChartNoAxesColumnIncreasing, ShieldCheck } from 'lucide-react'
-import { colors, layout } from '../../theme/tokens'
+import { colors, layout, tones } from '../../theme/tokens'
 
 function Brand({ name, tagline }) {
   return (
@@ -55,7 +55,7 @@ function InfoBox({ icon, title, description, iconColor, stacked = false }) {
 
 /**
  * Thanh điều hướng bên trái.
- * navItems: [{ key, label, icon }]  (icon là component lucide-react)
+ * navItems: [{ key, label, icon, badge? }]  (icon là component lucide-react; badge > 0 hiện số đỏ bên phải)
  */
 export default function Sidebar({
   brand = { name: 'An Việt', tagline: 'QUẢN TRỊ TÀI CHÍNH' },
@@ -96,7 +96,7 @@ export default function Sidebar({
           {navTitle}
         </Typography>
         <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {navItems.map(({ key, label, icon: Icon }) => {
+          {navItems.map(({ key, label, icon: Icon, badge }) => {
             const active = key === activeKey
             return (
               <ListItemButton
@@ -121,6 +121,27 @@ export default function Sidebar({
                   primary={label}
                   slotProps={{ primary: { sx: { fontSize: 13, fontWeight: active ? 600 : 400 } } }}
                 />
+                {badge > 0 && (
+                  <Box
+                    component="span"
+                    aria-label={`${badge} mục chờ xử lý`}
+                    sx={{
+                      minWidth: 20,
+                      height: 20,
+                      px: 0.75,
+                      borderRadius: 10,
+                      bgcolor: tones.danger.fg,
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      lineHeight: '20px',
+                      textAlign: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {badge > 99 ? '99+' : badge}
+                  </Box>
+                )}
               </ListItemButton>
             )
           })}

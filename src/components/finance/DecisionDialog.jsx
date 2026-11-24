@@ -34,9 +34,9 @@ const EMPTY = { reason: '', fields: '' }
  * Dialog ghi nhận quyết định duyệt: Phê duyệt / Yêu cầu bổ sung / Từ chối.
  * - type: 'approve' | 'changes' | 'reject' (null = đóng)
  * - Bổ sung và Từ chối bắt buộc lý do; Bổ sung có thêm "Trường cần sửa" (mỗi dòng một trường).
- * onConfirm({ type, reason, fields: string[] })
+ * onConfirm({ type, reason, fields: string[] }) · loading: đang gửi quyết định (khóa nút)
  */
-export default function DecisionDialog({ type, subject, approveLabel, description, onClose, onConfirm }) {
+export default function DecisionDialog({ type, subject, approveLabel, description, loading = false, onClose, onConfirm }) {
   const methods = useForm({ defaultValues: EMPTY })
   const config = CONFIG[type] ?? CONFIG.approve
 
@@ -60,6 +60,7 @@ export default function DecisionDialog({ type, subject, approveLabel, descriptio
       description={description ?? 'Quyết định được lưu vào lịch sử bất biến cùng phiên bản hồ sơ đang xem.'}
       confirmLabel={type === 'approve' && approveLabel ? approveLabel : config.confirmLabel}
       tone={config.tone}
+      loading={loading}
       onClose={onClose}
       onConfirm={submit}
     >

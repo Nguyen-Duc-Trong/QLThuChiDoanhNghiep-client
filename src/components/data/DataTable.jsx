@@ -18,6 +18,8 @@ export default function DataTable({
   rows = [],
   rowKey = 'id',
   onRowClick,
+  // (row) => sx của dòng, vd in đậm dòng cần xử lý
+  getRowSx,
   loading = false,
   emptyState = <EmptyState variant="empty" compact />,
   minWidth = 640,
@@ -55,7 +57,7 @@ export default function DataTable({
                 key={getKey(row)}
                 hover={Boolean(onRowClick)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                sx={{ cursor: onRowClick ? 'pointer' : undefined }}
+                sx={{ cursor: onRowClick ? 'pointer' : undefined, ...getRowSx?.(row) }}
               >
                 {columns.map((col) => (
                   <TableCell key={col.key} align={col.align}>

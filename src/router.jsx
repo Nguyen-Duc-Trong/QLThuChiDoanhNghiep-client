@@ -28,7 +28,9 @@ const router = createBrowserRouter([
               { index: true, lazy: page(() => import('./pages/ExpenseListPage')) },
               { path: 'new', handle: { crumb: 'Tạo yêu cầu chi', permissions: [PERMS.EXPENSE_CREATE] }, lazy: page(() => import('./pages/CreateExpensePage')) },
               { path: ':id', handle: { crumb: (match) => match.params.id }, lazy: page(() => import('./pages/ExpenseDetailPage')) },
-              { path: ':id/resubmit', handle: { crumb: 'Bổ sung hồ sơ', permissions: [PERMS.EXPENSE_EDIT] }, lazy: page(() => import('./pages/ResubmitExpensePage')) },
+              { path: ':id/edit', handle: { crumb: 'Chỉnh sửa', permissions: [PERMS.EXPENSE_EDIT] }, lazy: page(() => import('./pages/CreateExpensePage')) },
+              // Màn 14 · Bổ sung hồ sơ và gửi lại: dùng chung form với màn tạo
+              { path: ':id/resubmit', handle: { crumb: 'Bổ sung hồ sơ', permissions: [PERMS.EXPENSE_EDIT] }, lazy: page(() => import('./pages/CreateExpensePage')) },
             ],
           },
           {
@@ -66,7 +68,7 @@ const router = createBrowserRouter([
               { index: true, lazy: page(() => import('./pages/payments/TransactionsPage')) },
               {
                 path: ':id',
-                handle: { crumb: (match) => `Thực hiện chi ${match.params.id}`, permissions: [PERMS.PAYMENT_EXECUTE] },
+                handle: { crumb: (match) => `Chi tiết chi ${match.params.id}`, permissions: [PERMS.PAYMENT_MENU] },
                 lazy: page(() => import('./pages/payments/ExecutePaymentPage')),
               },
             ],

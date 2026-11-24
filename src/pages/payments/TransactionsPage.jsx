@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useCallback, useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
+import { useDispatch, useSelector } from 'react-redux'
 import Button from '@mui/material/Button'
-import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { CalendarDays } from 'lucide-react'
 import {
   AppAlert,
+  CustomTab,
   DataTable,
-  DescriptionList,
   EmptyState,
   FilterBar,
   FilterSelect,
@@ -18,152 +18,264 @@ import {
   StatGrid,
   StatusBadge,
   TablePaginationBar,
-  useToast,
 } from '../../components'
-import { TRANSACTIONS } from '../../mocks/approvals'
-import { formatMoney } from '../../utils/format'
-import usePermission from '../../hooks/usePermission'
 import { PERMS } from '../../constants/permissions'
+import usePermission from '../../hooks/usePermission'
+import useOnChange from '../../hooks/useOnChange'
+import {
+  fetchPaymentRequests,
+  fetchPaymentStats,
+  fetchTransactions,
+  selectPaymentRequests,
+  selectPaymentRequestsError,
+  selectPaymentRequestsLoading,
+  selectPaymentRequestsQuery,
+  selectPaymentRequestsTotal,
+  selectPaymentStats,
+  selectTransactions,
+  selectTransactionsError,
+  selectTransactionsLoading,
+  selectTransactionsQuery,
+  selectTransactionsTotal,
+  setPaymentRequestsQuery,
+  setTransactionsQuery,
+} from '../../store/slices/paymentsSlice'
+import { selectPendingPaymentCount } from '../../store/slices/notificationsSlice'
+import { formatDate, formatMoney } from '../../utils/format'
 
-// Màn 16 · Giao dịch và đối soát thanh toán. Kế toán thao tác; lãnh đạo chỉ xem.
-const PAGE_SIZE = 9
-const PERIOD_OPTIONS = [
-  { value: '2026-10', label: 'Tháng 10/2026' },
-  { value: '2026-09', label: 'Tháng 9/2026' },
-]
-const SOURCE_OPTIONS = [{ value: '', label: 'Tất cả nguồn' }, ...[...new Set(TRANSACTIONS.map((t) => t.source))].map((s) => ({ value: s, label: s }))]
-const STATUS_OPTIONS = [
+// Màn 16 · Thanh toán: hồ sơ thanh toán (chờ chi + đã chi, có cột trạng thái) và lịch sử lệnh chi.
+// Kế toán tải ủy nhiệm chi và Hoàn thành chi; người chỉ có quyền xem thì xem. Không theo dõi đối soát ngân hàng.
+
+/** 6 tháng gần nhất (theo giờ Việt Nam) cho bộ lọc */
+const MONTH_OPTIONS = (() => {
+  const [year, month] = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).split('-').map(Number)
+  const options = [{ value: '', label: 'Tất cả thời gian' }]
+  for (let i = 0; i < 6; i += 1) {
+    const d = new Date(year, month - 1 - i, 1)
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    options.push({ value, label: `Tháng ${d.getMonth() + 1}/${d.getFullYear()}` })
+  }
+  return options
+})()
+const REQUEST_STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
-  { value: 'THANH_CONG', label: 'Thành công' },
-  { value: 'CHO_DOI_SOAT', label: 'Chờ đối soát' },
-  { value: 'LOI', label: 'Lỗi' },
+  { value: 'DA_DUYET', label: 'Chờ chi' },
+  { value: 'DA_THANH_TOAN', label: 'Hoàn thành' },
 ]
+
+// Dòng in đậm: hồ sơ chờ chi (cần kế toán xử lý)
+const PENDING_ROW_SX = { '& td': { fontWeight: 700 } }
+
+const requestStatusBadge = (r) => {
+  if (r.status === 'DA_THANH_TOAN') return <StatusBadge pill status="DA_THANH_TOAN" />
+  return r.overdue ? <StatusBadge pill tone="danger" label="Chờ chi · Quá hạn" /> : <StatusBadge pill status="CHO_CHI" />
+}
 
 export default function TransactionsPage() {
   const navigate = useNavigate()
-  const showToast = useToast()
-  const canOperate = usePermission(PERMS.PAYMENT_EXECUTE)
-  const [transactions, setTransactions] = useState(TRANSACTIONS)
-  const [search, setSearch] = useState('')
-  const [period, setPeriod] = useState('2026-10')
-  const [source, setSource] = useState('')
-  const [status, setStatus] = useState('')
-  const [page, setPage] = useState(1)
-  const [selectedId, setSelectedId] = useState(TRANSACTIONS.find((t) => t.status === 'LOI')?.id)
+  const dispatch = useDispatch()
+  const canExecute = usePermission(PERMS.PAYMENT_EXECUTE)
+  const stats = useSelector(selectPaymentStats)
+  const pendingCount = useSelector(selectPendingPaymentCount)
 
-  const filtered = useMemo(() => {
-    const keyword = search.trim().toLowerCase()
-    return transactions.filter(
-      (t) =>
-        (!source || t.source === source) &&
-        (!status || t.status === status) &&
-        (!keyword || `${t.id} ${t.expenseId} ${t.source} ${t.beneficiary}`.toLowerCase().includes(keyword)),
-    )
-  }, [transactions, search, source, status])
+  const requests = useSelector(selectPaymentRequests)
+  const requestsTotal = useSelector(selectPaymentRequestsTotal)
+  const requestsQuery = useSelector(selectPaymentRequestsQuery)
+  const requestsLoading = useSelector(selectPaymentRequestsLoading)
+  const requestsError = useSelector(selectPaymentRequestsError)
 
-  const resetPage = (setter) => (value) => {
-    setter(value)
-    setPage(1)
-  }
+  const rows = useSelector(selectTransactions)
+  const total = useSelector(selectTransactionsTotal)
+  const query = useSelector(selectTransactionsQuery)
+  const loading = useSelector(selectTransactionsLoading)
+  const loadError = useSelector(selectTransactionsError)
 
-  const count = (predicate) => transactions.filter(predicate).length
-  const selected = transactions.find((t) => t.id === selectedId)
+  // Tab lưu trên URL (?tab=history) để quay lại từ màn chi tiết vẫn đúng tab
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') === 'history' ? 'history' : 'requests'
+  const setTab = (value) => setSearchParams(value === 'history' ? { tab: 'history' } : {}, { replace: true })
+  const [requestSearch, setRequestSearch] = useState(requestsQuery.search)
+  const [search, setSearch] = useState(query.search)
 
-  const checkBankCode = () => {
-    setTransactions((prev) => prev.map((t) => (t.id === selected.id ? { ...t, status: 'CHO_DOI_SOAT' } : t)))
-    showToast(`${selected.id}: mã ngân hàng đã được kiểm tra, chuyển sang chờ đối soát`, 'info')
-  }
+  const reloadRequests = useCallback(() => {
+    dispatch(fetchPaymentRequests(requestsQuery))
+    dispatch(fetchPaymentStats())
+  }, [dispatch, requestsQuery])
+  const reloadTransactions = useCallback(() => dispatch(fetchTransactions(query)), [dispatch, query])
 
-  const columns = [
-    { key: 'id', header: 'Mã giao dịch', render: (t) => <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{t.id}</Typography> },
-    { key: 'expenseId', header: 'Yêu cầu chi' },
-    { key: 'round', header: 'Lần chi', width: 70 },
-    { key: 'source', header: 'Tài khoản nguồn' },
-    { key: 'beneficiary', header: 'Thụ hưởng' },
-    { key: 'amount', header: 'Số tiền VND', align: 'right', render: (t) => formatMoney(t.amount, { unit: false }) },
-    { key: 'time', header: 'Thời gian' },
-    { key: 'actor', header: 'Người thực hiện' },
-    { key: 'bankRef', header: 'Mã ngân hàng' },
-    { key: 'status', header: 'Trạng thái giao dịch', render: (t) => <StatusBadge status={t.status} /> },
-    { key: 'reconcile', header: 'Trạng thái đối soát', render: (t) => <StatusBadge status={t.reconcile} /> },
+  useEffect(() => {
+    reloadRequests()
+  }, [reloadRequests])
+
+  useEffect(() => {
+    reloadTransactions()
+  }, [reloadTransactions])
+
+  // Server báo số hồ sơ chờ chi vừa đổi (lãnh đạo vừa duyệt cuối / kế toán khác vừa chi) → tải lại
+  useOnChange(pendingCount, () => {
+    reloadRequests()
+    reloadTransactions()
+  })
+
+  // Chờ người dùng gõ xong 300ms mới gọi API tìm kiếm
+  useEffect(() => {
+    if (requestSearch === requestsQuery.search) return undefined
+    const timer = setTimeout(() => dispatch(setPaymentRequestsQuery({ search: requestSearch })), 300)
+    return () => clearTimeout(timer)
+  }, [requestSearch, requestsQuery.search, dispatch])
+
+  useEffect(() => {
+    if (search === query.search) return undefined
+    const timer = setTimeout(() => dispatch(setTransactionsQuery({ search })), 300)
+    return () => clearTimeout(timer)
+  }, [search, query.search, dispatch])
+
+  const requestOffset = (requestsQuery.page - 1) * requestsQuery.limit
+  const requestColumns = [
+    { key: 'stt', header: 'STT', width: 60, render: (r) => requestOffset + requests.indexOf(r) + 1 },
+    { key: 'code', header: 'Mã yêu cầu', width: 160 },
+    {
+      key: 'purpose',
+      header: 'Nội dung',
+      render: (r) => (
+        <Typography component="span" sx={{ fontSize: 'inherit', fontWeight: 'inherit', display: 'block', maxWidth: 280 }} noWrap>
+          {r.purpose || '—'}
+        </Typography>
+      ),
+    },
+    { key: 'department', header: 'Phòng ban', width: 160, render: (r) => r.departmentName ?? '—' },
+    { key: 'beneficiaryName', header: 'Thụ hưởng', width: 170, render: (r) => r.beneficiaryName ?? '—' },
+    { key: 'amount', header: 'Số tiền (VND)', align: 'right', width: 140, render: (r) => formatMoney(r.amount, { unit: false }) },
+    { key: 'date', header: 'Cần chi / Ngày chi', width: 130, render: (r) => formatDate(r.status === 'DA_THANH_TOAN' ? r.paidAt : r.dueDate) },
+    { key: 'status', header: 'Trạng thái', width: 170, render: requestStatusBadge },
+  ]
+
+  const txOffset = (query.page - 1) * query.limit
+  const transactionColumns = [
+    { key: 'stt', header: 'STT', width: 60, render: (t) => txOffset + rows.indexOf(t) + 1 },
+    { key: 'code', header: 'Mã lệnh chi', width: 150 },
+    { key: 'expenseCode', header: 'Yêu cầu chi', width: 160 },
+    { key: 'beneficiaryName', header: 'Thụ hưởng' },
+    { key: 'amount', header: 'Số tiền (VND)', align: 'right', width: 140, render: (t) => formatMoney(t.amount, { unit: false }) },
+    {
+      key: 'proof',
+      header: 'Ủy nhiệm chi',
+      width: 220,
+      render: (t) => (
+        <Typography component="span" sx={{ fontSize: 'inherit', display: 'block', maxWidth: 210 }} noWrap>
+          {t.proofFileName ?? (t.bankRef ? `Mã GD ${t.bankRef}` : '—')}
+        </Typography>
+      ),
+    },
+    { key: 'executedAt', header: 'Ngày chi', width: 110, render: (t) => formatDate(t.executedAt) },
+    { key: 'status', header: 'Trạng thái', width: 150, render: () => <StatusBadge pill status="DA_THANH_TOAN" /> },
   ]
 
   return (
     <>
       <PageHeader
         eyebrow="16 / THANH TOÁN"
-        title="Giao dịch và đối soát thanh toán"
-        description="Theo dõi mã giao dịch, yêu cầu chi, lần chi, tài khoản nguồn, thụ hưởng, số tiền VND, thời gian, người thực hiện, mã ngân hàng, trạng thái giao dịch và đối soát."
+        title="Thực hiện chi và lịch sử lệnh chi"
+        description="Hồ sơ đã duyệt cuối (chờ chi) và đã hoàn thành chi. Kế toán tải lên ủy nhiệm chi rồi bấm Hoàn thành chi; tiền về người thụ hưởng do ngân hàng xử lý."
+        tags={!canExecute ? <StatusBadge label="Chỉ xem" tone="neutral" /> : undefined}
       />
 
-      <StatGrid columns={3}>
-        <StatCard label="Chờ đối soát" value={count((t) => t.reconcile === 'CHO_DOI_SOAT')} caption="Cần kiểm tra mã ngân hàng và đối soát trước khi thực hiện lại." />
-        <StatCard label="Thành công" value={count((t) => t.status === 'THANH_CONG')} caption="Đã đối soát thành công trong 24 giờ qua." />
-        <StatCard label="Lỗi cần xử lý" value={count((t) => t.status === 'LOI')} tone="danger" caption="Cần kiểm tra mã ngân hàng trước khi thử lại để tránh chi kép." />
+      <StatGrid columns={2}>
+        <StatCard label="Chờ thực chi" value={stats.pending.count} tone="primary" caption={`${formatMoney(stats.pending.amount)} đã duyệt cuối, chưa chi`} />
+        <StatCard label="Đã chi tháng này" value={formatMoney(stats.thisMonth.amount, { unit: false })} tone="success" caption={`VND · ${stats.thisMonth.count} lệnh chi`} />
       </StatGrid>
 
-      <FilterBar search={<SearchInput value={search} onChange={resetPage(setSearch)} placeholder="Tìm mã giao dịch, yêu cầu chi, tài khoản nguồn hoặc thụ hưởng" width={360} />}>
-        <FilterSelect value={period} options={PERIOD_OPTIONS} onChange={setPeriod} icon={CalendarDays} />
-        <FilterSelect value={source} options={SOURCE_OPTIONS} onChange={resetPage(setSource)} />
-        <FilterSelect value={status} options={STATUS_OPTIONS} onChange={resetPage(setStatus)} />
-      </FilterBar>
+      <CustomTab
+        value={tab}
+        onChange={setTab}
+        sx={{ mb: 2 }}
+        tabs={[
+          { value: 'requests', label: 'Hồ sơ thanh toán', count: stats.pending.count },
+          { value: 'history', label: 'Lịch sử lệnh chi', count: total },
+        ]}
+      />
 
-      <SectionCard
-        title="Danh sách giao dịch và đối soát"
-        action={<Typography variant="caption">Cập nhật 22/10/2026 · {filtered.length} bản ghi</Typography>}
-        sx={{ mb: 3 }}
-      >
-        <DataTable
-          columns={columns}
-          rows={filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)}
-          onRowClick={(t) => setSelectedId(t.id)}
-          minWidth={1200}
-          emptyState={<EmptyState compact variant={search || source || status ? 'no-results' : 'empty'} />}
-        />
-        {filtered.length > 0 && (
-          <TablePaginationBar page={page} pageSize={PAGE_SIZE} total={filtered.length} onPageChange={setPage} itemLabel="giao dịch" />
-        )}
-      </SectionCard>
+      {tab === 'requests' && (
+        <>
+          <FilterBar search={<SearchInput value={requestSearch} onChange={setRequestSearch} placeholder="Tìm mã, nội dung, người tạo hoặc thụ hưởng" width={360} />}>
+            <FilterSelect value={requestsQuery.status} options={REQUEST_STATUS_OPTIONS} onChange={(status) => dispatch(setPaymentRequestsQuery({ status }))} />
+          </FilterBar>
 
-      {selected && (
-        <SectionCard
-          title={`Chi tiết giao dịch${selected.status === 'LOI' ? ' lỗi' : ''} ${selected.id}`}
-          subtitle={`Yêu cầu chi ${selected.expenseId} · Lần chi ${selected.round} · Thời gian ${selected.time}`}
-          action={<StatusBadge status={selected.status} />}
-        >
-          <DescriptionList
-            columns={3}
-            items={[
-              { label: 'Yêu cầu chi', value: selected.expenseId },
-              { label: 'Lần chi', value: selected.round },
-              { label: 'Tài khoản nguồn', value: selected.source },
-              { label: 'Thụ hưởng', value: selected.beneficiary },
-              { label: 'Số tiền VND', value: formatMoney(selected.amount, { unit: false }) },
-              { label: 'Thời gian', value: selected.time },
-              { label: 'Người thực hiện', value: selected.actor },
-              { label: 'Mã ngân hàng', value: selected.bankRef },
-              { label: 'Trạng thái giao dịch', value: <StatusBadge status={selected.status} /> },
-              { label: 'Trạng thái đối soát', value: <StatusBadge status={selected.reconcile} /> },
-              ...(selected.error ? [{ label: 'Lý do lỗi', value: selected.error, span: 2 }] : []),
-            ]}
-          />
-
-          {selected.status === 'LOI' && (
-            <AppAlert tone="danger" title="Kiểm tra trước khi thử lại" sx={{ mt: 2.5 }}>
-              Kiểm tra mã ngân hàng trước khi thực hiện lại để tránh chi kép. Chỉ kế toán thực thi, lãnh đạo xem, không mở quyền thực chi cho nhân viên/trưởng phòng.
-              <Stack direction="row" spacing={1.5} sx={{ mt: 2, flexWrap: 'wrap', rowGap: 1 }}>
-                {canOperate && (
-                  <Button variant="contained" onClick={checkBankCode}>
-                    Kiểm tra mã ngân hàng
-                  </Button>
-                )}
-                <Button variant="outlined" onClick={() => navigate(canOperate ? `/payments/${selected.expenseId}` : `/expenses/${selected.expenseId}`)}>
-                  Mở yêu cầu chi
-                </Button>
-              </Stack>
+          {requestsError && (
+            <AppAlert tone="danger" title="Không tải được hồ sơ thanh toán" sx={{ mb: 2 }}>
+              {requestsError.message}{' '}
+              <Button size="small" onClick={reloadRequests}>Thử lại</Button>
             </AppAlert>
           )}
-        </SectionCard>
+
+          <SectionCard
+            title="Hồ sơ thanh toán"
+            subtitle={canExecute ? 'Dòng in đậm đang chờ chi: bấm để tải ủy nhiệm chi và hoàn thành chi' : 'Bấm vào hồ sơ để xem chi tiết và ủy nhiệm chi'}
+            action={<Typography variant="caption">{requestsTotal} hồ sơ</Typography>}
+          >
+            <DataTable
+              columns={requestColumns}
+              rows={requests}
+              loading={requestsLoading && requests.length === 0}
+              onRowClick={(r) => navigate(`/payments/${r.code}`)}
+              getRowSx={(r) => (r.status === 'DA_DUYET' ? PENDING_ROW_SX : undefined)}
+              minWidth={1100}
+              emptyState={
+                <EmptyState
+                  compact
+                  variant={requestsQuery.search || requestsQuery.status ? 'no-results' : 'empty'}
+                  title={requestsQuery.search || requestsQuery.status ? undefined : 'Chưa có hồ sơ thanh toán'}
+                  description={requestsQuery.search || requestsQuery.status ? undefined : 'Hồ sơ được lãnh đạo duyệt cuối sẽ xuất hiện ở đây.'}
+                />
+              }
+            />
+            {requestsTotal > 0 && (
+              <TablePaginationBar
+                page={requestsQuery.page}
+                pageSize={requestsQuery.limit}
+                total={requestsTotal}
+                onPageChange={(page) => dispatch(setPaymentRequestsQuery({ page }))}
+                itemLabel="hồ sơ"
+              />
+            )}
+          </SectionCard>
+        </>
+      )}
+
+      {tab === 'history' && (
+        <>
+          <FilterBar search={<SearchInput value={search} onChange={setSearch} placeholder="Tìm mã lệnh chi, yêu cầu chi hoặc thụ hưởng" width={360} />}>
+            <FilterSelect value={query.month} options={MONTH_OPTIONS} onChange={(month) => dispatch(setTransactionsQuery({ month }))} icon={CalendarDays} />
+          </FilterBar>
+
+          {loadError && (
+            <AppAlert tone="danger" title="Không tải được lịch sử lệnh chi" sx={{ mb: 2 }}>
+              {loadError.message}{' '}
+              <Button size="small" onClick={reloadTransactions}>Thử lại</Button>
+            </AppAlert>
+          )}
+
+          <SectionCard title="Lịch sử lệnh chi" subtitle="Bấm vào một lệnh chi để mở màn chi tiết" action={<Typography variant="caption">{total} lệnh chi</Typography>} sx={{ mb: 3 }}>
+            <DataTable
+              columns={transactionColumns}
+              rows={rows}
+              loading={loading && rows.length === 0}
+              onRowClick={(t) => navigate(`/payments/${t.expenseCode}`, { state: { from: 'history' } })}
+              minWidth={1150}
+              emptyState={<EmptyState compact variant={query.search || query.month ? 'no-results' : 'empty'} />}
+            />
+            {total > 0 && (
+              <TablePaginationBar
+                page={query.page}
+                pageSize={query.limit}
+                total={total}
+                onPageChange={(page) => dispatch(setTransactionsQuery({ page }))}
+                itemLabel="lệnh chi"
+              />
+            )}
+          </SectionCard>
+
+        </>
       )}
     </>
   )

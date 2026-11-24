@@ -29,7 +29,8 @@ export default function CustomChecklist({ name, items, disabled = false }) {
                   aria-checked={checked}
                   disabled={disabled}
                   onClick={() => onChange({ ...value, [item.key]: !checked })}
-                  sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, width: '100%', textAlign: 'left', borderRadius: `${radius.sm}px`, p: 0.5 }}
+                  // ButtonBase mặc định justify-content: center → nội dung bị căn giữa, lệch nhau theo độ dài chữ
+                  sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start', gap: 1.5, width: '100%', textAlign: 'left', borderRadius: `${radius.sm}px`, p: 0.5 }}
                 >
                   <Box
                     sx={{
@@ -46,7 +47,7 @@ export default function CustomChecklist({ name, items, disabled = false }) {
                   >
                     {checked && <Check size={13} strokeWidth={3} />}
                   </Box>
-                  <Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{item.label}</Typography>
                     {item.description && <Typography variant="caption" component="p" sx={{ mt: 0.25 }}>{item.description}</Typography>}
                   </Box>

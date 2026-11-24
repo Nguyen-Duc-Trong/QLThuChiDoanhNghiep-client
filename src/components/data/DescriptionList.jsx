@@ -27,7 +27,8 @@ export default function DescriptionList({ items, columns = 2, sx }) {
           <Typography component="dt" variant="body2" color="text.secondary">
             {item.label}
           </Typography>
-          <Typography component="dd" sx={{ m: 0, mt: 0.75, fontSize: 14, fontWeight: 600 }}>
+          {/* overflowWrap: chuỗi dài không có khoảng trắng (mã, tên file, số TK) tự xuống dòng, không đẩy tràn trang */}
+          <Typography component="dd" sx={{ m: 0, mt: 0.75, fontSize: 14, fontWeight: 600, overflowWrap: 'anywhere' }}>
             {item.value}
           </Typography>
         </Box>

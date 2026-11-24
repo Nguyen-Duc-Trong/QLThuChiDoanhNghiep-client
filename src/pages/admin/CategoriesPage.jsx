@@ -28,7 +28,7 @@ import {
   TOAST_OPTIONS,
   useToast,
 } from '../../components'
-import { CATEGORY_MODULES } from '../../mocks/admin'
+import { CATEGORY_MODULES } from '../../constants/categories'
 import categoriesApi from '../../services/categoriesApi'
 import {
   createCategory,
@@ -241,7 +241,7 @@ export default function CategoriesPage() {
       render: (c) => <StatusBadge label={c.typeLabel ?? MODULE_LABEL[c.type]} tone={MODULE_TONE[c.type]} size="small" />,
     },
     { key: 'status', header: 'Trạng thái', width: 140, render: (c) => <StatusBadge status={c.status} label={c.statusLabel} size="small" /> },
-    // Server chưa đếm số giao dịch dùng danh mục (chưa có module thu / chi) → mặc định 0
+    // Số yêu cầu chi + dòng ngân sách đang dùng danh mục (server đếm). > 0 thì chỉ ngừng dùng, không xóa
     { key: 'usage', header: 'Số giao dịch', width: 110, render: (c) => c.usage ?? 0 },
     {
       key: 'updatedAt',

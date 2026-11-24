@@ -1,6 +1,7 @@
-// Quản trị hệ thống (màn 21, 22) và nhật ký – thông báo (màn 23).
+// Quản trị hệ thống (màn 21) và nhật ký – thông báo (màn 23).
 
 // Danh mục quyền và ma trận vai trò lấy từ server: GET /permissions/catalog, GET /roles.
+// Phòng ban, ủy quyền, cấu hình (màn 22) và danh mục (màn 26–29) đã lấy từ server.
 
 export const ROLE_SCOPES = ['Cá nhân', 'Phòng ban', 'Toàn công ty', 'Cấu hình hệ thống']
 
@@ -11,36 +12,6 @@ export const SPEND_FLOW = [
   { title: 'Lãnh đạo duyệt cuối', description: 'Quyết định cuối cùng trước khi chi' },
   { title: 'Kế toán thực chi', description: 'Thực hiện thanh toán sau đủ ba phê duyệt' },
 ]
-
-// Màn 22 · Phòng ban.
-export const STAFF = ['Lê Thu Hà', 'Trần Minh Đức', 'Nguyễn Thị Lan', 'Đỗ Hữu Tâm', 'Phạm Văn Nam', 'Nguyễn Văn Quang', 'Lê Hữu Khang', 'Phạm Quốc Huy', 'Nguyễn Minh Anh']
-
-export const DEPARTMENT_LIST = [
-  { id: 'KT-2026', name: 'Phòng Kế toán', description: 'Quản lý thu, chi và đối soát', head: 'Lê Thu Hà', approver: 'Nguyễn Minh Anh', updatedAt: '18/10/2026, 14:20' },
-  { id: 'MKT-2026', name: 'Phòng Marketing', description: 'Chiến dịch thương hiệu và truyền thông', head: 'Trần Minh Đức', approver: 'Phạm Quốc Huy', updatedAt: '20/10/2026, 10:05' },
-  { id: 'NS-2026', name: 'Phòng Nhân sự', description: 'Tuyển dụng, lương thưởng và đào tạo', head: 'Nguyễn Thị Lan', approver: '', updatedAt: '22/10/2026, 09:15' },
-  { id: 'VH-2026', name: 'Phòng Vận hành', description: 'Hỗ trợ khách hàng và vận hành dự án', head: 'Đỗ Hữu Tâm', approver: 'Lê Thu Hà', updatedAt: '15/10/2026, 16:40' },
-  { id: 'IT-2026', name: 'Phòng IT', description: 'Phát triển sản phẩm và bảo mật hệ thống', head: 'Phạm Văn Nam', approver: 'Trần Minh Đức', updatedAt: '12/10/2026, 08:30' },
-  { id: 'KD-2026', name: 'Phòng Kinh doanh', description: 'Phát triển khách hàng và quản lý hợp đồng', head: 'Nguyễn Văn Quang', approver: 'Phạm Quốc Huy', updatedAt: '10/10/2026, 11:10' },
-  { id: 'SX-2026', name: 'Phòng Sản xuất', description: 'Quản lý nhà cung cấp và sản xuất', head: 'Lê Hữu Khang', approver: 'Nguyễn Minh Anh', updatedAt: '08/10/2026, 15:00' },
-  { id: 'TC-2026', name: 'Phòng Tài chính', description: 'Quản lý ngân sách và báo cáo tài chính', head: 'Phạm Quốc Huy', approver: 'Trần Minh Đức', updatedAt: '05/10/2026, 09:45' },
-]
-
-export const DELEGATION = {
-  substitute: 'Trần Minh Đức',
-  scope: 'Phòng Marketing, dưới 50 triệu VND',
-  period: '01/11/2026 → 30/11/2026',
-  audit: 'Tất cả thay đổi cấu hình được lưu theo người thực hiện',
-}
-
-export const SYSTEM_CONFIG = {
-  docCode: 'CHI-YYYYMM-XXXX',
-  currency: 'VND',
-  budgetThreshold: 80,
-  notification: 'Email và ứng dụng khi thiếu người duyệt',
-}
-
-export const NOTIFICATION_CHANNELS = ['Email và ứng dụng khi thiếu người duyệt', 'Chỉ trong ứng dụng', 'Email, ứng dụng và SMS']
 
 // Màn 23 · Nhật ký hoạt động (bất biến) và thông báo.
 export const ACTIVITY_LOG = [
@@ -168,10 +139,4 @@ export const NOTIFICATIONS = [
   },
   { id: 6, tone: 'success', kind: 'read', read: true, category: 'Duyệt cấp phòng', time: 'Đã đọc', title: 'CHI-1024 đã được Trần Minh Đức duyệt cấp phòng · 20/10/2026, 14:30' },
   { id: 7, tone: 'success', kind: 'read', read: true, category: 'Thẩm định kế toán', time: 'Đã đọc', title: 'CHI-1024 đã qua kế toán thẩm định · Lê Thu Hà · 21/10/2026, 10:20' },
-]
-
-// Màn 26–29 · Danh mục thu / chi dùng chung toàn doanh nghiệp.
-export const CATEGORY_MODULES = [
-  { value: 'THU', label: 'Thu', prefix: 'THU' },
-  { value: 'CHI', label: 'Chi', prefix: 'CHI' },
 ]

@@ -10,10 +10,12 @@ import { AppShell, EmptyState } from '../components'
 import { ROLES, findActiveNavKey, getNavItems, hasAnyPermission } from '../constants/navigation'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMe, logout, refreshSession, selectCurrentUser, selectSessionStatus } from '../store/slices/sessionSlice'
+import { PERMS } from '../constants/permissions'
+import { selectApprovalCount, selectPendingPaymentCount } from '../store/slices/notificationsSlice'
+import useNotificationStream from '../hooks/useNotificationStream'
 import { formatDate } from '../utils/format'
 
 const TODAY_LABEL = formatDate(new Date())
-
 /**
  * Cổng đăng nhập cho mọi route trong khung: mở app thì hỏi GET /me,
  * chưa đăng nhập (hoặc phiên hết hạn) thì chuyển về /login, nhớ trang đang mở để quay lại.
@@ -56,7 +58,20 @@ function AppLayout() {
     return () => window.removeEventListener('focus', onFocus)
   }, [dispatch])
 
-  const navItems = getNavItems(user.permissions, { includeGallery: import.meta.env.DEV })
+  const baseNavItems = getNavItems(user.permissions, { includeGallery: import.meta.env.DEV })
+  const hasApprovalMenu = baseNavItems.some((i) => i.key === 'approval')
+  // Số chờ thực chi chỉ hiện cho người được thực chi (kế toán); người chỉ có quyền xem không cần nhắc
+  const canExecutePayment = baseNavItems.some((i) => i.key === 'payment') && hasAnyPermission(user.permissions, [PERMS.PAYMENT_EXECUTE])
+  const approvalCount = useSelector(selectApprovalCount)
+  const pendingPaymentCount = useSelector(selectPendingPaymentCount)
+
+  // Số trên menu do server đẩy qua SSE ngay khi có thay đổi (gửi duyệt, duyệt từng cấp, gửi lệnh chi...), không hỏi định kỳ.
+  // - Phê duyệt: hồ sơ đang chờ chính người này quyết định (kể cả theo ủy quyền).
+  // - Thanh toán: hồ sơ lãnh đạo đã duyệt cuối, chờ kế toán gửi lệnh chi.
+  useNotificationStream(hasApprovalMenu || canExecutePayment)
+
+  const MENU_BADGES = { approval: approvalCount, payment: canExecutePayment ? pendingPaymentCount : 0 }
+  const navItems = baseNavItems.map((item) => (MENU_BADGES[item.key] ? { ...item, badge: MENU_BADGES[item.key] } : item))
   const activeKey = findActiveNavKey(navItems, pathname)
 
   const crumbs = matches

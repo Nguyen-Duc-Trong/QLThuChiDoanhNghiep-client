@@ -6,8 +6,9 @@ import { STATUS } from '../../constants/status'
  * Pill trạng thái.
  * - Dùng mã nghiệp vụ: <StatusBadge status="CHO_LANH_DAO" />
  * - Hoặc tự đặt: <StatusBadge tone="success" label="Kế toán đã đối chiếu hồ sơ" />
+ * - pill: bo tròn hẳn + viền, dùng cho cột Trạng thái ở các màn danh sách
  */
-export default function StatusBadge({ status, label, tone, size = 'medium', sx }) {
+export default function StatusBadge({ status, label, tone, size = 'medium', pill = false, sx }) {
   const preset = status ? STATUS[status] : null
   const text = label ?? preset?.label ?? status
   const color = tones[tone ?? preset?.tone ?? 'neutral']
@@ -18,9 +19,10 @@ export default function StatusBadge({ status, label, tone, size = 'medium', sx }
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
-        px: size === 'small' ? 0.75 : 1,
+        px: pill ? 1.5 : size === 'small' ? 0.75 : 1,
         py: size === 'small' ? 0.25 : 0.5,
-        borderRadius: 1,
+        borderRadius: pill ? 999 : 1,
+        border: pill ? `1px solid ${color.border}` : undefined,
         fontSize: size === 'small' ? 11 : 12,
         fontWeight: 500,
         lineHeight: 1.4,
